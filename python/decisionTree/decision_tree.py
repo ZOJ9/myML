@@ -11,15 +11,19 @@ from collections import Counter
 
 class DT_TREE:
     
-    def __init__(self,score):
+    def __init__(self,score,alpha):
         self.score = score
+        self.count = 0
+        self.alpha = alpha
         
     class tree_node():
         def __init__(self,labels=None):
             self.split = np.inf
+            self.parent = None
             self.childs = {}
             self.leaflable = labels
             self.leafdatas = None
+            self.leafscore = 0.0
     
     @staticmethod
     def calcu_entropy(labels):
@@ -113,11 +117,17 @@ class DT_TREE:
         if len(datas) != len(labels):
             raise IOError,"the length of the inconsistent for datas and label"
         
-        root = self.tree_node(labels)  
+        root = self.tree_node(labels)
+        
+        #减枝使用"H(T_t)*叶节点的样本点个数"
+        root.leafscore = self.calcu_entropy(labels)*len(labels)
+        
         best_split,max_scores = self.choose_best_feature(datas,labels)
         if max_scores <= 0:
+            self.count += 1
             root.leafdatas = datas
             return root
+        
         root.split = best_split
         feats = datas[:,best_split]
         datas = np.delete(datas,best_split,axis=1)
@@ -125,6 +135,7 @@ class DT_TREE:
         for feat in set(feats):
             f_idx =  feats == feat
             root.childs[feat] = self.create_tree(datas[f_idx],labels[f_idx])
+            root.childs[feat].parent = root
         return root
     
     #进行预测
@@ -141,6 +152,66 @@ class DT_TREE:
         test = np.delete(test,split)
         if feat in root.childs:
             return self.pred(test,root.childs[feat])
+        
+    #统计树的叶子节点
+    def get_leaf_count(self,tree):
+        
+        nums = 0
+        childs = tree.childs
+        if len(childs) != 0:
+            for k in childs.values():
+                nums += self.get_leaf_count(k)
+        else:
+            nums += 1
+        return nums
+    
+    #统计树的深度
+    def get_depth(self,tree):
+        
+        nums = 0
+        childs = tree.childs
+        if len(childs) != 0:
+            for k in childs.values():
+                thisnums = 1+ self.get_depth(k)
+        else:
+            thisnums = 1
+        if thisnums > nums :
+            nums = thisnums
+        return nums
+    
+    #减枝
+    def prune(self,tree):
+        
+        is_prune = False
+         
+        if len(tree.childs) == 0:
+            
+            parent_childs = tree.parent.childs
+            parent_count = 0
+            parent_labels = []
+            
+            for v in parent_childs.values():
+                parent_count += self.get_leaf_count(v)
+                parent_labels += v.leaflable
+            
+            current_count = self.get_leaf_count(tree)
+            current_loss = current_count * self.alpha + tree.leafscore
+             
+            parent_loss = (current_count+1-parent_count) *\
+                            self.alpha + tree.parent.leafscore
+             
+            if parent_loss <= current_loss:
+                tree.parent.childs = {}
+                tree.leaflable = parent_labels
+                is_prune = True
+        else:
+            if is_prune:
+                self.prune(tree.parent)
+            else:
+                for v in tree.childs.values():
+                    self.prune(v)
+            
+                   
                  
 if __name__ == "__main__":
     
@@ -165,9 +236,9 @@ if __name__ == "__main__":
     
     datas = np.array(datas)
     labels = np.array(labels)
-    dt = DT_TREE("gain")
+    dt = DT_TREE("gain",0.2)
     root = dt.create_tree(datas,labels)
-    
+    dt.prune(root)
     l = dt.pred(datas[2], root)
     print l
     
