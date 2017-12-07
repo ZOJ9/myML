@@ -31,14 +31,14 @@ import numpy as np
 class KD_node:
     
     def __init__(self,point=None,split=None,LL=None,RR=None):
-        self.point = point
-        self.split = split
+        self.point = point  # 切分数据点
+        self.split = split  #切分维度
         self.left = LL
         self.right = RR
         
 def get_split(X):
     
-    mean_v =np.mean(X,axis = 0) 
+    mean_v =np.mean(X,axis = 0)  #按照列计算均值
     val = sum((X-mean_v)**2)/float(X.shape[0])
     idxs = val.argsort()
     return idxs[-1]
@@ -83,7 +83,7 @@ def findNN(root,query):
             temp_root = temp_root.right
     ##回溯查找
     while node_list:
-        back_point = node_list.pop()
+        back_point = node_list.pop() # 删除列表中最后一个元素，后进先出，类似堆
         ss = back_point.split
         ##判断是否需要进入父亲节点的子空间进行搜索 
         if abs(query[ss] - back_point.point[ss]) < min_dist:

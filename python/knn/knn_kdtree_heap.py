@@ -1,13 +1,19 @@
-#-*- coding:utf-8 -*-
+#! -*- coding:utf-8 -*-
+
+'''
+此代码的思想是创建一个堆，根据查找二叉树和回溯的节点到test节点的大小及堆内的节点的个数，
+   来维护堆的大小始终为k，并且这k个节点都是距离test节点最近的k个点。
+'''
 
 import numpy as np
 from collections import Counter
 from sklearn.cross_validation import train_test_split
 
+
 class Node:
     
-    def __init__(self,point=None,label=None,split=None,parent=None,
-                 left=None,right=None,dist=None):
+    def __init__(self, point=None, label=None, split=None, parent=None,
+                 left=None, right=None, dist=None):
         
         self.point = point
         self.label = label
@@ -17,12 +23,13 @@ class Node:
         self.split = split
         self.dist = dist
 
+
 class KD_tree:
     
     @staticmethod 
     def get_split(X):
     
-        mean_v =np.mean(X,axis = 0) 
+        mean_v =np.mean(X, axis=0)
         val = sum((X-mean_v)**2)/float(X.shape[0])
         idxs = val.argsort()
         return idxs[-1]
@@ -90,16 +97,16 @@ class KD_tree:
     def search_knn(self,query,root,k):
     
         knn_list = []    
-        almost_node = self.search_leaf(query, root)
-        heap = Heap(k,knn_list)
+        almost_node = self.search_leaf(query, root) #在kd树种找到test数据的叶子节点
+        heap = Heap(k,knn_list) # 初始化堆
         
-        while(almost_node != None):
+        while( almost_node != None):
             
-            cur_dist = self.compute_dist(query,almost_node.point) 
+            cur_dist = self.compute_dist(query,almost_node.point)  #计算test数据与叶子节点的距离
             almost_node.dist = cur_dist
             heap.adjust_heap(almost_node)
 
-            if almost_node.parent != None and abs(query[almost_node.parent.split]-
+            if almost_node.parent != None and abs(query[almost_node.parent.split] -
                                                   almost_node.parent.point[almost_node.parent.split]) < cur_dist:
                 
                 brother = self.get_brother(almost_node)
@@ -120,9 +127,9 @@ class Heap:
     
     def adjust_heap(self,node):
         if len(self.list_node) < self.k:
-            self.max_heap_fixup(node)
+            self.max_heap_fixup(node) # 如果堆中的点个数小于k，那么加入新的节点，调整堆结构
         elif node.dist < self.list_node[0].dist:
-            self.max_heap_fixdown(node)
+            self.max_heap_fixdown(node) #如果堆中点个数大于k，比较目前的最近距离与堆中最短距离的距离大小，决定是否把这个点加入堆中。
     
     def max_heap_fixup(self,new_node):
         
@@ -144,7 +151,7 @@ class Heap:
         self.list_node[0] = new_node
         
         i = 0
-        j = 1*2+1
+        j = i*2+1
         
         while(j < len(self.list_node)):
             if j+1 < len(self.list_node) and self.list_node[j].dist < self.list_node[j+1].dist:
@@ -176,12 +183,12 @@ class Knn:
         
         preds = []
         kdtree = KD_tree()
-        root = kdtree.create_kdtree(self.datas, self.labels)
+        root = kdtree.create_kdtree(self.datas, self.labels)  # 创建一个kd树
         for test in tests:
-            knn_list = kdtree.search_knn(test,root,self.k)
-            pred_labels = map(lambda x:x.label,knn_list)
-            pred_count = Counter(pred_labels)
-            pred_count = sorted(pred_count.iteritems(),key=lambda x:x[1],reverse=True)
+            knn_list = kdtree.search_knn(test,root,self.k)  # 查找距离最近的k个节点
+            pred_labels = map(lambda x:x.label,knn_list)    #节点的标签
+            pred_count = Counter(pred_labels)                #统计k个节点的标签
+            pred_count = sorted(pred_count.iteritems(),key=lambda x:x[1],reverse=True)  # 按照标签的统计值从大到小排序
             pred = pred_count[0][0]
             preds.append(pred)
         return preds
@@ -192,8 +199,8 @@ class Knn:
             raise IOError,"Data inconsistency"
         
         accuracy = 0.0 
-        for idx in test_labels:
-            if test_labels[idx] == pred_labels[idx]:
+        for idx,val in enumerate(test_labels):
+            if val == pred_labels[idx]:
                 accuracy += 1
         accuracy = accuracy/len(test_labels)
         print "accuracy : %f"%(accuracy)
@@ -221,18 +228,12 @@ def auto_norm(datas):
 if __name__ == "__main__":
     
     filename = "E:/data/datingTestSet2.txt"
-    datas,labels = load_data(filename)
+    datas, labels = load_data(filename)
     norm_datas = auto_norm(datas)
     
-    x_tr,x_tt,y_tr,y_tt = train_test_split(norm_datas,labels, train_size=.60, random_state=10)   
+    x_tr, x_tt, y_tr, y_tt = train_test_split(norm_datas,labels, train_size=.60, random_state=10)
     
     kdtree = KD_tree()
     knn = Knn(6,x_tr,y_tr)
     preds = knn.predict(x_tt)
     knn.estimate(y_tt, np.array(preds))
-    
- 
-    
-    
-        
-        

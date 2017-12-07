@@ -122,7 +122,7 @@ class Lr():
 
 if __name__ == "__main__":
     
-    path = "./../data/testSet.txt"
+    path = "./../../data/testSet.txt"
     datas,labels = load_data(path)
     lr = Lr(datas,labels,1000,0.001)
     lr.batch_grad_descent()
